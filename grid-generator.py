@@ -1,13 +1,16 @@
 #!/usr/bin/python3
 
-from pylatex import Document, MiniPage, VerticalSpace, Tabular, utils
+import operator
 import random
 import sys
 
+from functools import reduce
+
+from pylatex import Document, MiniPage, VerticalSpace, Tabular, utils
 from pylatex.basic import NewLine, NewPage
 from pylatex.position import HorizontalSpace
 
-def generate_grid(size:int ,empty: int):
+def generate_grid(size:int ,empty: int, op: operator = operator.add):
     """generate a fubuki grid
 
     Args:
@@ -17,14 +20,15 @@ def generate_grid(size:int ,empty: int):
     # generate list of ints contained in the grid from 1 to size squared
     l = [x for x in range(1,(size**2)+1)]
     # shuffle them
+    # sum(1 for _ in l): to get the length of l, but l is a generator so len() does not work
     shuffle = random.sample(l,sum(1 for _ in l))
 
     # calculate solution
-    sum_lines = []
-    sum_collumns = []
+    res_lines = []
+    res_collumns = []
     for index in range(size):
-        sum_lines.append(sum(shuffle[i] for i in range(len(shuffle)) if int(i/size) == index))
-        sum_collumns.append(sum(shuffle[i] for i in range(len(shuffle)) if int(i%size) == index))
+        res_lines.append(reduce( lambda a, b: op(a,b), [shuffle[i] for i in range(len(shuffle)) if int(i/size) == index]))
+        res_collumns.append(reduce( lambda a, b: op(a,b), [shuffle[i] for i in range(len(shuffle)) if int(i%size) == index]))
 
     # filter which cells will be printed
     # create a conservator element filter
@@ -32,8 +36,8 @@ def generate_grid(size:int ,empty: int):
     # select which will be displayed
     selected_shuffle = [shuffle[i] * selector[i] for i in range(size**2)]
     # split all results into lines for the fubuki square format
-    lines = [selected_shuffle[i:i+size] + [sum_lines[int(i/size)]] for i in range(0,len(selected_shuffle), size)]
-    lines.append(sum_collumns + [0])
+    lines = [selected_shuffle[i:i+size] + [res_lines[int(i/size)]] for i in range(0,len(selected_shuffle), size)]
+    lines.append(res_collumns + [0])
     return lines
 
 def usage():
@@ -54,6 +58,13 @@ if __name__ == "__main__":
     empty = int(sys.argv[2])
     count = int(sys.argv[3])
 
+    op_name = "add"
+    if len(sys.argv) > 4:
+        if sys.argv[4] == "mul":
+            op_name = sys.argv[4]
+
+    op = operator.mul if len(sys.argv) > 4 and sys.argv[4] == "mul" else operator.add
+
     if (size < 0) or (empty < 0 or empty > size**2):
         usage()
 
@@ -70,7 +81,7 @@ if __name__ == "__main__":
             MiniPage(width=r"0.5\textwidth", height=r"0.5\textwidth", fontsize="Huge")):
             with doc.create(Tabular("|c"*size + "||c|")) as Table:
                 Table.add_hline()
-                lines = generate_grid(size, empty)
+                lines = generate_grid(size, empty, op)
                 for line in lines:
                     output = [f"{item:3}" if item != 0 else "__" for item in line]
                     boldified = utils.bold(output[-1])
@@ -86,7 +97,7 @@ if __name__ == "__main__":
         if (i % (7-size)) == (7-size) - 1:
              doc.append(NewPage())
 
-    doc.generate_pdf(f"fubuki{size}x{size}_{count}", clean_tex=True)
+    doc.generate_pdf(f"fubuki_{op_name}_{size}x{size}_{count}", clean_tex=True)
 
 
 
