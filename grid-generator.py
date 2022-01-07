@@ -41,12 +41,14 @@ def generate_grid(size:int ,empty: int, op: operator = operator.add):
     return lines
 
 def usage():
-        print(f"usage:\n\tgrid-generator.py <size#> <empty#>")
+        print(f"usage:\n\tgrid-generator.py <size#> <empty#> <grid_lines_count> [mul] [csv]")
         print("\t<size#> must be positive, and <empty#> positive and inferior to <size#> squared")
-        print("\nvalid example:\n")
-        print("\tpython3 grid-generator.py 3 5")
+        print("\nvalid examples:\n")
+        print("\tpython3 grid-generator.py 3 5 10")
+        print("\tpython3 grid-generator.py 4 10 100 mul csv")
+        print("\tpython3 grid-generator.py 3 3 1000 csv")
         print("\ninvalid example:\n")
-        print("\tpython3 grid-generator.py 3 10 (10 > 3x3)\n")
+        print("\tpython3 grid-generator.py 3 10 -1 (10 > 3x3) (-1 < 1)\n")
         exit(1)
 
 if __name__ == "__main__":
@@ -59,14 +61,41 @@ if __name__ == "__main__":
     count = int(sys.argv[3])
 
     op_name = "add"
+    csv_out = False
+
     if len(sys.argv) > 4:
         if sys.argv[4] == "mul":
             op_name = sys.argv[4]
+        elif sys.argv[4] == "csv":
+            csv_out = True
 
-    op = operator.mul if len(sys.argv) > 4 and sys.argv[4] == "mul" else operator.add
+    if len(sys.argv) > 5 and sys.argv[5] == "csv":
+        csv_out = True
 
-    if (size < 0) or (empty < 0 or empty > size**2):
+    op = operator.mul if op_name == "mul" else operator.add
+
+    if (size < 0) or (empty < 0 or empty > size**2) or (count < 1):
         usage()
+
+    if csv_out:
+        csv_data = []
+        with open(f"fubuki_{op_name}_{size}x{size}_{count}.csv", "w") as f:
+            for i in range(1, count+1):
+                grid1 = generate_grid(size, empty, op)
+                grid2 = generate_grid(size, empty, op)
+
+                for line in zip(grid1,grid2):
+                    l0 = [str(i) if i != 0 else "" for i in line[0]]
+                    l1 = [str(i) if i != 0 else "" for i in line[1]]
+                    f.write(f"{','.join(l0)},,,{','.join(l1)}\n")
+                f.write(",\n"*2)
+
+        exit(0)
+
+
+    if size > 4:
+        print("size superior to 4 are not supported in pdf format, use csv format instead")
+        exit(1)
 
     # create pdf with the help of pylatex
     geometry_options = {"left": "10mm", "right": "20mm", "top": "15mm", "bottom": "0mm"}
